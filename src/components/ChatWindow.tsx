@@ -27,7 +27,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, streamingMessage }) =
       <div className="messages-container">
         {messages.length === 0 && (
           <div className="welcome-message">
-            <h2>欢迎使用AI问答系统</h2>
+            <h2>欢迎使用Open AI问答系统</h2>
             <p>请在下方输入您的问题，我会尽力为您解答。</p>
           </div>
         )}

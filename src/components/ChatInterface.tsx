@@ -14,7 +14,7 @@ const ChatInterface: React.FC = () => {
   return (
     <div className="chat-interface">
       <div className="chat-header">
-        <h1>AI问答系统</h1>
+        <h1>Open AI问答系统</h1>
         <div className="status-indicator">
           <span className="status-dot"></span>
           在线
