@@ -22,23 +22,72 @@
   margin: 0;
 }
 
-.status-indicator {
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.api-status {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
 }
 
+.status-text {
+  font-weight: 500;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
-  background: #2ecc71;
   border-radius: 50%;
   animation: pulse 2s infinite;
+}
+
+.status-dot.streaming {
+  background: #2ecc71;
+}
+
+.status-dot.fallback {
+  background: #f39c12;
+}
+
+.status-dot.loading {
+  background: #95a5a6;
+  animation: loading-pulse 1s infinite;
+}
+
+.refresh-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 3px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.refresh-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.status-message {
+  font-size: 1.2rem;
 }
 
 @keyframes pulse {
   0% { opacity: 1; }
   50% { opacity: 0.5; }
   100% { opacity: 1; }
+}
+
+@keyframes loading-pulse {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { opacity: 0.3; }
 }

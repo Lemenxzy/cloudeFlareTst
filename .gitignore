@@ -84,3 +84,4 @@ public
 # Storybook build outputs
 .out
 .storybook-out
+.dev.vars

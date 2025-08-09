@@ -118,99 +118,25 @@ async function callOpenAIStream(userMessage: string, env: Env): Promise<Readable
   }
 }
 
-async function callOpenAI(userMessage: string, env: Env): Promise<string> {
-  // 开发模式：检查API key格式并返回模拟回复
-  if (!env.OPENAI_API_KEY || !env.OPENAI_API_KEY.startsWith('sk-')) {
-    console.log('Invalid or missing API key, using fallback response')
-    return `## 你好！👋
-
-我收到了你的消息："${userMessage}"
-
-### 当前状态
-- ✅ Workers 服务正常运行
-- ✅ GraphQL 查询处理正常
-- ⚠️ 需要配置有效的 OpenAI API Key
-
-### 配置说明
-请在 \`.dev.vars\` 文件中设置有效的 OpenAI API Key：
-\`\`\`
-OPENAI_API_KEY=sk-your-actual-openai-api-key-here
-\`\`\`
-
-*这是开发模式的回复，配置API Key后将获得真实的AI智能回答。*`
-  }
-
-  try {
-    console.log('Initializing OpenAI SDK...', {
-      apiKeyLength: env.OPENAI_API_KEY.length,
-      userMessage
-    })
-
-    // 为Cloudflare Workers环境配置OpenAI客户端
-    const openai = new OpenAI({
-      apiKey: env.OPENAI_API_KEY,
-      // 在Workers环境中禁用某些默认行为
-      dangerouslyAllowBrowser: true,
-    })
-
-    console.log('Calling OpenAI API...')
-    let content: string | null = null;
-    try {
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: '你是一个有用的AI助手，请用中文回答问题。你的回答应该详细、准确，并且使用Markdown格式来组织内容，包括标题、列表、代码块等格式化元素。当回答技术问题时，请提供具体的代码示例和步骤说明。'
-          },
-          {
-            role: 'user',
-            content: userMessage
-          }
-        ],
-        max_tokens: 800,
-        temperature: 0.7,
-      })
-      console.log('OpenAI API response received:', completion)
-      content = completion.choices[0]?.message?.content
-    
-      if (!content) {
-        console.error('No content in OpenAI response')
-        return '抱歉，我无法生成回复。'
-      }
-
-      console.log('OpenAI API call successful, content length:', content.length)
-    } catch (error: any) {
-      console.error('Error calling OpenAI API:', error)
-      return '抱歉，我无法生成回复。'
-    }
-
-
-    return content
-  } catch (error: any) {
-    console.error('OpenAI SDK error:', {
-      message: error?.message,
-      type: error?.constructor?.name,
-      status: error?.status,
-      error: error
-    })
-    
-    // 提供更详细的错误信息
-    if (error?.status === 401) {
-      return '❌ API Key 无效，请检查您的 OpenAI API Key 是否正确配置。'
-    } else if (error?.status === 429) {
-      return '⚠️ API 调用频率超限，请稍后再试。'
-    } else if (error?.status === 500) {
-      return '🔧 OpenAI 服务暂时不可用，请稍后再试。'
-    } else {
-      return `抱歉，调用AI服务时遇到问题：${error?.message || 'Unknown error'}`
-    }
-  }
-}
 
 const resolvers = {
   Query: {
     getMessages: () => messages,
+    apiStatus: (_: any, __: any, { env }: { env: Env }) => {
+      const hasApiKey = !!env.OPENAI_API_KEY
+      const isValid = hasApiKey && env.OPENAI_API_KEY.startsWith('sk-')
+      
+      return {
+        hasApiKey,
+        isValid,
+        canUseStreaming: isValid,
+        message: isValid 
+          ? '✅ API Key 配置正确，可以使用流式传输'
+          : hasApiKey 
+            ? '⚠️ API Key 格式无效，请检查配置'
+            : '❌ 未找到 API Key，请配置 OPENAI_API_KEY'
+      }
+    }
   },
   
   Mutation: {
@@ -225,8 +151,23 @@ const resolvers = {
       }
       messages.push(userMessage)
 
-      // 调用OpenAI API获取AI回复
-      const aiContent = await callOpenAI(input.content, env)
+      // 生成静态回复（因为无效API key时才会使用GraphQL）
+      const aiContent = `## 你好！👋
+
+我收到了你的消息："${input.content}"
+
+### 当前状态
+- ✅ Workers 服务正常运行
+- ✅ GraphQL 查询处理正常
+- ⚠️ 需要配置有效的 OpenAI API Key
+
+### 配置说明
+请在 \`.dev.vars\` 文件中设置有效的 OpenAI API Key：
+\`\`\`
+OPENAI_API_KEY=sk-your-actual-openai-api-key-here
+\`\`\`
+
+*这是开发模式的回复，配置API Key后将获得真实的AI智能回答。*`
       
       // 创建AI消息
       const aiMessage: Message = {
@@ -251,48 +192,80 @@ async function handleGraphQL(request: Request, env: Env) {
     return new Response(null, { headers: corsHeaders })
   }
 
-  const body = await request.json() as { query: string; variables?: any }
-  
-  if (body.query.includes('sendMessage')) {
-    // 处理带变量的查询
-    if (body.variables?.input) {
-      const result = await resolvers.Mutation.sendMessage(null, { input: body.variables.input }, { env })
-      return new Response(JSON.stringify({
-        data: { sendMessage: result }
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-    // 处理内联查询
-    const contentMatch = body.query.match(/content:\s*"([^"]*)"/)
-    const senderMatch = body.query.match(/sender:\s*"([^"]*)"/)
-    if (contentMatch && senderMatch) {
-      const input = {
-        content: contentMatch[1],
-        sender: senderMatch[1]
-      }
-      const result = await resolvers.Mutation.sendMessage(null, { input }, { env })
-      return new Response(JSON.stringify({
-        data: { sendMessage: result }
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-  }
-  
-  if (body.query.includes('getMessages')) {
-    const result = resolvers.Query.getMessages()
-    return new Response(JSON.stringify({
-      data: { getMessages: result }
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  if (request.method !== 'POST') {
+    return new Response('GraphQL only supports POST requests', {
+      status: 405,
+      headers: corsHeaders
     })
   }
 
-  return new Response(JSON.stringify({ error: 'Query not supported' }), {
-    status: 400,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  })
+  try {
+    const body = await request.json() as { query: string; variables?: any }
+    
+    // 处理 apiStatus 查询
+    if (body.query.includes('apiStatus')) {
+      const result = resolvers.Query.apiStatus(null, null, { env })
+      return new Response(JSON.stringify({
+        data: { apiStatus: result }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    
+    // 处理 getMessages 查询
+    if (body.query.includes('getMessages')) {
+      const result = resolvers.Query.getMessages()
+      return new Response(JSON.stringify({
+        data: { getMessages: result }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    
+    // 处理 sendMessage 变更
+    if (body.query.includes('sendMessage')) {
+      // 处理带变量的查询
+      if (body.variables?.input) {
+        const result = await resolvers.Mutation.sendMessage(null, { input: body.variables.input }, { env })
+        return new Response(JSON.stringify({
+          data: { sendMessage: result }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      // 处理内联查询
+      const contentMatch = body.query.match(/content:\s*"([^"]*)"/)
+      const senderMatch = body.query.match(/sender:\s*"([^"]*)"/)
+      if (contentMatch && senderMatch) {
+        const input = {
+          content: contentMatch[1],
+          sender: senderMatch[1]
+        }
+        const result = await resolvers.Mutation.sendMessage(null, { input }, { env })
+        return new Response(JSON.stringify({
+          data: { sendMessage: result }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+    }
+
+    return new Response(JSON.stringify({ 
+      error: 'Query not supported',
+      query: body.query 
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  } catch (error: any) {
+    console.error('GraphQL error:', error)
+    return new Response(JSON.stringify({
+      error: `GraphQL 处理错误：${error?.message || 'Unknown error'}`
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
 }
 
 export default {
@@ -311,55 +284,78 @@ export default {
       })
     }
 
-    // 简单测试端点
-    if (url.pathname === '/test') {
-      try {
-        const testMessage = await callOpenAI('测试消息', env)
-        return new Response(JSON.stringify({
-          success: true,
-          message: testMessage
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-      } catch (error: any) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: error?.message || 'Unknown error'
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-      }
-    }
 
+    // GraphQL 端点
     if (url.pathname === '/graphql') {
       return handleGraphQL(request, env)
     }
 
-    // 流式传输端点
-    if (url.pathname === '/stream') {
+    // 统一的聊天端点 - 根据API key状态决定返回SSE还是GraphQL
+    if (url.pathname === '/chat' || url.pathname === '/stream') {
       if (request.method === 'OPTIONS') {
         return new Response(null, { headers: corsHeaders })
       }
 
       if (request.method === 'POST') {
         try {
-          const { message } = await request.json()
-          console.log('Received streaming request:', message)
-
-          const stream = await callOpenAIStream(message, env)
+          const body = await request.json()
           
-          return new Response(stream, {
-            headers: {
-              ...corsHeaders,
-              'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-cache',
-              'Connection': 'keep-alive',
+          // 检查是否有有效的API key
+          const hasValidApiKey = env.OPENAI_API_KEY && env.OPENAI_API_KEY.startsWith('sk-')
+          
+          if (hasValidApiKey) {
+            // 有效API key - 使用SSE流式传输
+            const message = body.message || body.input?.content
+            if (!message) {
+              return new Response(JSON.stringify({ error: 'Message is required' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              })
             }
-          })
+            
+            console.log('Using SSE streaming for message:', message)
+            const stream = await callOpenAIStream(message, env)
+            
+            return new Response(stream, {
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+              }
+            })
+          } else {
+            // 无效或无API key - 使用GraphQL格式返回
+            console.log('Using GraphQL fallback response')
+            
+            let message: string
+            if (body.query && body.query.includes('sendMessage')) {
+              // GraphQL查询格式
+              if (body.variables?.input?.content) {
+                message = body.variables.input.content
+              } else {
+                const contentMatch = body.query.match(/content:\s*"([^"]*)"/)
+                message = contentMatch ? contentMatch[1] : '你好'
+              }
+            } else {
+              // 直接消息格式
+              message = body.message || '你好'
+            }
+            
+            const result = await resolvers.Mutation.sendMessage(null, { 
+              input: { content: message, sender: 'User' } 
+            }, { env })
+            
+            return new Response(JSON.stringify({
+              data: { sendMessage: result }
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            })
+          }
         } catch (error: any) {
-          console.error('Error in /stream endpoint:', error)
+          console.error('Error in chat endpoint:', error)
           return new Response(JSON.stringify({
-            error: `流式传输错误：${error?.message || 'Unknown error'}`
+            error: `请求处理错误：${error?.message || 'Unknown error'}`
           }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
