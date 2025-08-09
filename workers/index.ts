@@ -339,6 +339,5 @@ export default {
     return new Response('AI Chat API', {
       headers: corsHeaders
     })
-    console.log('init')
   },
 }
