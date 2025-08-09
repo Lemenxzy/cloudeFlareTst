@@ -12,14 +12,15 @@ interface Message {
 
 interface ChatWindowProps {
   messages: Message[]
+  streamingMessage?: string
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ messages, streamingMessage }) => {
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, streamingMessage])
 
   return (
     <div className="chat-window">
@@ -34,6 +35,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
+        
+        {streamingMessage && (
+          <MessageBubble 
+            key="streaming"
+            message={{
+              id: 'streaming',
+              content: streamingMessage,
+              sender: 'AI Assistant',
+              timestamp: new Date().toISOString(),
+              isAI: true
+            }}
+            isStreaming={true}
+          />
+        )}
         
         <div ref={chatEndRef} />
       </div>

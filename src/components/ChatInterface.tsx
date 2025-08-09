@@ -5,7 +5,7 @@ import { useChat } from '../hooks/useChat'
 import './ChatInterface.css'
 
 const ChatInterface: React.FC = () => {
-  const { messages, isLoading, sendMessage } = useChat()
+  const { messages, streamingMessage, isLoading, sendMessage } = useChat()
 
   const handleSendMessage = async (content: string) => {
     await sendMessage(content)
@@ -21,7 +21,7 @@ const ChatInterface: React.FC = () => {
         </div>
       </div>
       
-      <ChatWindow messages={messages} />
+      <ChatWindow messages={messages} streamingMessage={streamingMessage} />
       
       <MessageInput onSendMessage={handleSendMessage} isLoading={isLoading} />
     </div>

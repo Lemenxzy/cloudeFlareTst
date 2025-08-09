@@ -12,7 +12,7 @@
 }
 
 .message-content {
-  max-width: 70%;
+  width: 100%;
   padding: 0.75rem 1rem;
   border-radius: 18px;
   word-wrap: break-word;
@@ -49,4 +49,33 @@
 
 .ai-message .message-meta {
   color: #7f8c8d;
+}
+
+.streaming-cursor {
+  animation: blink 1s infinite;
+  font-weight: bold;
+  color: #3498db;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.streaming-indicator {
+  color: #3498db;
+  font-style: italic;
+}
+
+.message-bubble.streaming {
+  animation: pulse-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-glow {
+  from {
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+  }
+  to {
+    box-shadow: 0 0 15px rgba(52, 152, 219, 0.6);
+  }
 }
