@@ -2,16 +2,10 @@ name = "ai-chat-worker"
 main = "workers/index.ts"
 compatibility_date = "2023-10-30"
 
-# 开发环境配置
-[vars]
-CORS_ORIGIN = "http://localhost:5173"
 # 注意：请不要在这里直接设置 OPENAI_API_KEY
 # 使用 `wrangler secret put OPENAI_API_KEY` 命令来安全地设置
 
 # 生产环境配置  
 [env.production]
 name = "ai-chat-worker-prod"
-
-[env.production.vars]
-CORS_ORIGIN = "https://your-domain.github.io"
 # 生产环境的 OPENAI_API_KEY 也应该通过 secrets 设置

@@ -2,7 +2,6 @@ import OpenAI from 'openai'
 
 export interface Env {
   OPENAI_API_KEY: string
-  CORS_ORIGIN?: string
 }
 
 interface Message {
@@ -58,7 +57,7 @@ OPENAI_API_KEY=sk-your-actual-openai-api-key-here
     })
 
     console.log('Calling OpenAI API...')
-    let content = null;
+    let content: string | null = null;
     try {
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
