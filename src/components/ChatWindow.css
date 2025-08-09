@@ -1,0 +1,27 @@
+.chat-window {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.welcome-message {
+  text-align: center;
+  color: #7f8c8d;
+  margin-top: 2rem;
+}
+
+.welcome-message h2 {
+  margin-bottom: 1rem;
+  font-weight: 300;
+}
+
+.welcome-message p {
+  font-size: 1.1rem;
+}
