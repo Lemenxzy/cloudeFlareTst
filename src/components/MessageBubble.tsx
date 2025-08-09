@@ -1,4 +1,5 @@
-import React from 'react'
+import * as React from 'react'
+import MarkdownRenderer from './MarkdownRenderer'
 import './MessageBubble.css'
 
 interface Message {
@@ -24,7 +25,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   return (
     <div className={`message-bubble ${message.isAI ? 'ai-message' : 'user-message'}`}>
       <div className="message-content">
-        <div className="message-text">{message.content}</div>
+        <div className="message-text">
+          {message.isAI ? (
+            <MarkdownRenderer content={message.content} />
+          ) : (
+            message.content
+          )}
+        </div>
         <div className="message-meta">
           <span className="message-sender">{message.sender}</span>
           <span className="message-time">{formatTime(message.timestamp)}</span>

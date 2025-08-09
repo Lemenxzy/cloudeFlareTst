@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import ChatWindow from './ChatWindow'
 import MessageInput from './MessageInput'
 import { useChat } from '../hooks/useChat'

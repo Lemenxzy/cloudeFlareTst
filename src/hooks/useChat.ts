@@ -1,11 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useSubscription } from '@apollo/client'
-import { 
-  GET_MESSAGES, 
-  SEND_MESSAGE, 
-  MESSAGE_ADDED_SUBSCRIPTION,
-  AI_RESPONSE_STREAM_SUBSCRIPTION 
-} from '../graphql/queries'
+import { useQuery, useMutation } from '@apollo/client'
+import { GET_MESSAGES, SEND_MESSAGE } from '../graphql/queries'
 
 interface Message {
   id: string
@@ -19,22 +14,8 @@ export const useChat = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   
-  const { data, loading } = useQuery(GET_MESSAGES)
+  const { data, loading, refetch } = useQuery(GET_MESSAGES)
   const [sendMessage] = useMutation(SEND_MESSAGE)
-  
-  useSubscription(MESSAGE_ADDED_SUBSCRIPTION, {
-    onData: ({ data: subscriptionData }) => {
-      if (subscriptionData.data?.messageAdded) {
-        const newMessage = subscriptionData.data.messageAdded
-        setMessages(prev => {
-          if (prev.find(msg => msg.id === newMessage.id)) {
-            return prev
-          }
-          return [...prev, newMessage]
-        })
-      }
-    }
-  })
 
   useEffect(() => {
     if (data?.getMessages) {
@@ -45,7 +26,7 @@ export const useChat = () => {
   const handleSendMessage = async (content: string) => {
     setIsLoading(true)
     try {
-      await sendMessage({
+      const result = await sendMessage({
         variables: {
           input: {
             content,
@@ -53,6 +34,13 @@ export const useChat = () => {
           }
         }
       })
+      
+      if (result.data?.sendMessage) {
+        const { userMessage, aiMessage } = result.data.sendMessage
+        setMessages(prev => [...prev, userMessage, aiMessage])
+      }
+      
+      await refetch()
     } catch (error) {
       console.error('Error sending message:', error)
     } finally {
