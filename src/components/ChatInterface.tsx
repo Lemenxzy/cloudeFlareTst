@@ -14,7 +14,7 @@ const ChatInterface: React.FC = () => {
   return (
     <div className="chat-interface">
       <div className="chat-header">
-        <h1>Open AI问答系统</h1>
+        <h1>Open AI</h1>
         <div className="status-info">
           <div className="api-status">
             {apiStatus ? (
@@ -40,7 +40,7 @@ const ChatInterface: React.FC = () => {
           </div>
           {apiStatus && (
             <div className="status-message" title={apiStatus.message}>
-              {apiStatus.canUseStreaming ? '✅' : '⚠️no Key'}
+              {apiStatus.canUseStreaming ? '✅' : '⚠️'}
             </div>
           )}
         </div>

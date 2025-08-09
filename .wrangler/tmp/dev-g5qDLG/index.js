@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-M1qt89/checked-fetch.js
+// .wrangler/tmp/bundle-q88esz/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init2) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-M1qt89/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-q88esz/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init2) {
   const request = new Request(input, init2);
   request.headers.delete("CF-Connecting-IP");
@@ -6780,54 +6780,30 @@ var workers_default = {
     if (url.pathname === "/graphql") {
       return handleGraphQL(request, env);
     }
-    if (url.pathname === "/chat" || url.pathname === "/stream") {
+    if (url.pathname === "/stream") {
       if (request.method === "OPTIONS") {
         return new Response(null, { headers: corsHeaders });
       }
       if (request.method === "POST") {
         try {
           const body = await request.json();
-          const hasValidApiKey = env.OPENAI_API_KEY && env.OPENAI_API_KEY.startsWith("sk-");
-          if (hasValidApiKey) {
-            const message = body.message || body.input?.content;
-            if (!message) {
-              return new Response(JSON.stringify({ error: "Message is required" }), {
-                status: 400,
-                headers: { ...corsHeaders, "Content-Type": "application/json" }
-              });
-            }
-            console.log("Using SSE streaming for message:", message);
-            const stream = await callOpenAIStream(message, env);
-            return new Response(stream, {
-              headers: {
-                ...corsHeaders,
-                "Content-Type": "text/event-stream",
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive"
-              }
-            });
-          } else {
-            console.log("Using GraphQL fallback response");
-            let message;
-            if (body.query && body.query.includes("sendMessage")) {
-              if (body.variables?.input?.content) {
-                message = body.variables.input.content;
-              } else {
-                const contentMatch = body.query.match(/content:\s*"([^"]*)"/);
-                message = contentMatch ? contentMatch[1] : "\u4F60\u597D";
-              }
-            } else {
-              message = body.message || "\u4F60\u597D";
-            }
-            const result = await resolvers.Mutation.sendMessage(null, {
-              input: { content: message, sender: "User" }
-            }, { env });
-            return new Response(JSON.stringify({
-              data: { sendMessage: result }
-            }), {
+          const message = body.message;
+          if (!message) {
+            return new Response(JSON.stringify({ error: "Message is required" }), {
+              status: 400,
               headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
           }
+          console.log("Processing SSE streaming request for message:", message);
+          const stream = await callOpenAIStream(message, env);
+          return new Response(stream, {
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "text/event-stream",
+              "Cache-Control": "no-cache",
+              "Connection": "keep-alive"
+            }
+          });
         } catch (error) {
           console.error("Error in chat endpoint:", error);
           return new Response(JSON.stringify({
@@ -6890,7 +6866,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-M1qt89/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-q88esz/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -6922,7 +6898,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-M1qt89/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-q88esz/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

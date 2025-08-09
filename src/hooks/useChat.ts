@@ -30,6 +30,7 @@ export const useChat = () => {
   const apiStatus: ApiStatus | null = apiStatusData?.apiStatus || null
 
   useEffect(() => {
+    console.log('Messages data updated:', messagesData)
     if (messagesData?.getMessages) {
       setMessages(messagesData.getMessages)
     }

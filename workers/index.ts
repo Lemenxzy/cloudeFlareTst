@@ -290,8 +290,8 @@ export default {
       return handleGraphQL(request, env)
     }
 
-    // 统一的聊天端点 - 根据API key状态决定返回SSE还是GraphQL
-    if (url.pathname === '/chat' || url.pathname === '/stream') {
+    // SSE 流式传输端点
+    if (url.pathname === '/stream') {
       if (request.method === 'OPTIONS') {
         return new Response(null, { headers: corsHeaders })
       }
@@ -299,59 +299,26 @@ export default {
       if (request.method === 'POST') {
         try {
           const body = await request.json()
+          const message = body.message
           
-          // 检查是否有有效的API key
-          const hasValidApiKey = env.OPENAI_API_KEY && env.OPENAI_API_KEY.startsWith('sk-')
-          
-          if (hasValidApiKey) {
-            // 有效API key - 使用SSE流式传输
-            const message = body.message || body.input?.content
-            if (!message) {
-              return new Response(JSON.stringify({ error: 'Message is required' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              })
-            }
-            
-            console.log('Using SSE streaming for message:', message)
-            const stream = await callOpenAIStream(message, env)
-            
-            return new Response(stream, {
-              headers: {
-                ...corsHeaders,
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
-              }
-            })
-          } else {
-            // 无效或无API key - 使用GraphQL格式返回
-            console.log('Using GraphQL fallback response')
-            
-            let message: string
-            if (body.query && body.query.includes('sendMessage')) {
-              // GraphQL查询格式
-              if (body.variables?.input?.content) {
-                message = body.variables.input.content
-              } else {
-                const contentMatch = body.query.match(/content:\s*"([^"]*)"/)
-                message = contentMatch ? contentMatch[1] : '你好'
-              }
-            } else {
-              // 直接消息格式
-              message = body.message || '你好'
-            }
-            
-            const result = await resolvers.Mutation.sendMessage(null, { 
-              input: { content: message, sender: 'User' } 
-            }, { env })
-            
-            return new Response(JSON.stringify({
-              data: { sendMessage: result }
-            }), {
+          if (!message) {
+            return new Response(JSON.stringify({ error: 'Message is required' }), {
+              status: 400,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             })
           }
+          
+          console.log('Processing SSE streaming request for message:', message)
+          const stream = await callOpenAIStream(message, env)
+          
+          return new Response(stream, {
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive',
+            }
+          })
         } catch (error: any) {
           console.error('Error in chat endpoint:', error)
           return new Response(JSON.stringify({
